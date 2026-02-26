@@ -495,11 +495,10 @@ def main():
     log.info("Security Sentinel starting on %s", HOSTNAME)
     send_alert(f"🛡️ Security Sentinel started\nHost: `{HOSTNAME}`\nAlert level: `{ALERT_LEVEL}`", "low")
 
+    # Disabled: processes and filesystem monitors are too noisy for personal Pi
     threads = [
-        threading.Thread(target=monitor_processes,        daemon=True, name="processes"),
         threading.Thread(target=monitor_ports,            daemon=True, name="ports"),
         threading.Thread(target=monitor_ssh_auth,         daemon=True, name="ssh"),
-        threading.Thread(target=monitor_filesystem,       daemon=True, name="filesystem"),
         threading.Thread(target=monitor_docker,           daemon=True, name="docker"),
         threading.Thread(target=monitor_resources,        daemon=True, name="resources"),
         threading.Thread(target=monitor_network_devices,  daemon=True, name="network"),
