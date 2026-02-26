@@ -49,6 +49,9 @@ KNOWN_BAD = [
     "nc -e", "bash -i", "python -c.*socket", "perl.*socket",
 ]
 
+# Known-good root processes to ignore (common system tools)
+KNOWN_GOOD_ROOT = ["docker", "containerd", "systemd", "cron", "rsyslog"]
+
 # Sensitive dirs to watch for changes
 # DISABLED for personal Pi - generates too many benign changes (CUPS, network, etc)
 # The other monitors (processes, ports, network, docker) will catch real threats
@@ -166,7 +169,8 @@ def monitor_processes():
                     # New root process (excluding common system ones)
                     elif user == "root":
                         safe_roots = {"systemd", "kthread", "migration", "rcu_", "ksoftirqd",
-                                      "kworker", "sshd", "python3", "bash", "sh", "python"}
+                                      "kworker", "sshd", "python3", "bash", "sh", "python",
+                                      "docker", "containerd", "cron", "rsyslog"}
                         if not any(s in name for s in safe_roots):
                             if should_alert("medium"):
                                 msg = (f"New root process spotted\nName: `{name}`\n"
