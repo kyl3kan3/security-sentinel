@@ -72,6 +72,7 @@ ALERT_LEVEL     = os.environ.get("ALERT_LEVEL", "medium")  # low | medium | high
 HOSTNAME        = socket.gethostname()
 
 # Polling intervals (seconds)
+# ── Configurable Intervals (seconds) ────────────────────────────────────────
 POLL_PROCESS    = 10
 POLL_PORTS      = 15
 POLL_NETWORK    = 30
@@ -79,6 +80,10 @@ POLL_FILES      = 5   # inotify-backed, low overhead
 POLL_AUTH       = 10
 POLL_DOCKER     = 20
 POLL_RESOURCES  = 60
+
+# Scan intervals (customize these when installing)
+SECRETS_SCAN_INTERVAL = 21600   # 6 hours - secrets/permissions check
+DAILY_SCAN_INTERVAL = 86400       # 24 hours - full security scan
 
 # Thresholds
 CPU_WARN        = 85   # % sustained
@@ -584,7 +589,7 @@ def monitor_secrets():
     global DAILY_SCAN_DONE
     
     while True:
-        time.sleep(21600)  # Run every 6 hours
+        time.sleep(SECRETS_SCAN_INTERVAL)
         try:
             import glob
             
@@ -673,10 +678,18 @@ def main():
         t.start()
         log.info("Started monitor: %s", t.name)
 
-    # Keep main thread alive and log heartbeat
+    # Keep main thread alive, run daily scan, log heartbeat
+    scan_counter = 0
     while True:
         time.sleep(3600)
+        scan_counter += 1
         log.info("Heartbeat — all monitors running")
+        
+        # Run daily scan based on interval
+        if scan_counter >= (DAILY_SCAN_INTERVAL / 3600):
+            run_daily_scan()
+            scan_counter = 0
+            
         send_alert("💓 Sentinel heartbeat — all systems monitored", "low")
         save_state(state)  # Persist known PIDs/ports
 
