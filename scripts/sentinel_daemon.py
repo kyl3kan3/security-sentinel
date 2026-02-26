@@ -98,9 +98,13 @@ KNOWN_BAD = [
 KNOWN_GOOD_ROOT = ["docker", "containerd", "systemd", "cron", "rsyslog"]
 
 # Sensitive dirs to watch for changes
-# DISABLED for personal Pi - generates too many benign changes (CUPS, network, etc)
-# The other monitors (processes, ports, network, docker) will catch real threats
-WATCH_DIRS = []
+# Watch only critical directories for security
+# Exclude noisy directories (CUPS, NetworkManager, etc)
+WATCH_DIRS = ["/root", "/var/spool/cron", "/usr/local/bin", "/usr/local/sbin"]
+
+# Exclude patterns (benign changes to skip)
+WATCH_EXCLUDE = ["cups", "NetworkManager", "ssl", "certificates", ".cache", 
+                 ".openclaw", "sessions.json", ".jsonl", ".tmp", ".swp"]
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -360,7 +364,9 @@ def monitor_filesystem():
                         "/.openclaw/", "/.wrangler/", "/.cache/", "/.npm/", "/.yarn/", "/.cargo/",
                         "/node_modules/", "/.git/", "/__pycache__/", ".tmp", ".swp",
                         ".xsession-errors", "sessions.json", ".jsonl",
-                        ".bashrc", ".profile", ".bash_history"]
+                        ".bashrc", ".profile", ".bash_history",
+                        # Watch exclude patterns
+                        "cups", "NetworkManager", "ssl", "certificates"]
                 if any(s in path for s in skip):
                     continue
 
@@ -495,10 +501,11 @@ def main():
     log.info("Security Sentinel starting on %s", HOSTNAME)
     send_alert(f"🛡️ Security Sentinel started\nHost: `{HOSTNAME}`\nAlert level: `{ALERT_LEVEL}`", "low")
 
-    # Disabled: processes and filesystem monitors are too noisy for personal Pi
     threads = [
+        threading.Thread(target=monitor_processes,        daemon=True, name="processes"),
         threading.Thread(target=monitor_ports,            daemon=True, name="ports"),
         threading.Thread(target=monitor_ssh_auth,         daemon=True, name="ssh"),
+        threading.Thread(target=monitor_filesystem,       daemon=True, name="filesystem"),
         threading.Thread(target=monitor_docker,           daemon=True, name="docker"),
         threading.Thread(target=monitor_resources,        daemon=True, name="resources"),
         threading.Thread(target=monitor_network_devices,  daemon=True, name="network"),
