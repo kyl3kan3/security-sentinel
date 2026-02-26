@@ -584,7 +584,7 @@ def monitor_secrets():
     global DAILY_SCAN_DONE
     
     while True:
-        time.sleep(3600)  # Run hourly
+        time.sleep(21600)  # Run every 6 hours
         try:
             import glob
             
