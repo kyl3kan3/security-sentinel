@@ -170,7 +170,8 @@ def monitor_processes():
                     elif user == "root":
                         safe_roots = {"systemd", "kthread", "migration", "rcu_", "ksoftirqd",
                                       "kworker", "sshd", "python3", "bash", "sh", "python",
-                                      "docker", "containerd", "cron", "rsyslog"}
+                                      "docker", "containerd", "cron", "rsyslog", 
+                                      "nm-dispatcher", "NetworkManager", "dbus-daemon"}
                         if not any(s in name for s in safe_roots):
                             if should_alert("medium"):
                                 msg = (f"New root process spotted\nName: `{name}`\n"
