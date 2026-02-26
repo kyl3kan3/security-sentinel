@@ -502,7 +502,6 @@ def main():
     send_alert(f"🛡️ Security Sentinel started\nHost: `{HOSTNAME}`\nAlert level: `{ALERT_LEVEL}`", "low")
 
     threads = [
-        threading.Thread(target=monitor_processes,        daemon=True, name="processes"),
         threading.Thread(target=monitor_ports,            daemon=True, name="ports"),
         threading.Thread(target=monitor_ssh_auth,         daemon=True, name="ssh"),
         threading.Thread(target=monitor_filesystem,       daemon=True, name="filesystem"),
