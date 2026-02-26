@@ -538,6 +538,41 @@ def run_daily_scan():
             send_alert(msg, "low")
         except: pass
         
+        # 6. Check firewall status
+        try:
+            result = subprocess.run(["ufw", "status"], capture_output=True, text=True, timeout=10)
+            if "Status: inactive" in result.stdout:
+                msg = "[LOW] Firewall (UFW) is inactive"
+                send_alert(msg, "low")
+        except: pass
+        
+        # 7. Check fail2ban status
+        try:
+            result = subprocess.run(["systemctl", "is-active", "fail2ban"], capture_output=True, text=True, timeout=10)
+            if result.stdout.strip() != "active":
+                msg = "[LOW] Fail2ban is not active"
+                send_alert(msg, "low")
+        except: pass
+        
+        # 8. Check for pending APT security updates
+        try:
+            result = subprocess.run(["apt-get", "-s", "upgrade", "-qq"], capture_output=True, text=True, timeout=30)
+            sec_count = result.stdout.count("security")
+            if sec_count > 0:
+                msg = f"[LOW] {sec_count} pending security updates"
+                send_alert(msg, "low")
+        except: pass
+        
+        # 9. Check sudo access (members of sudo group)
+        try:
+            result = subprocess.run(["getent", "group", "sudo"], capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                members = result.stdout.split(":")[-1].strip()
+                if members:
+                    msg = f"Users with sudo: {members}"
+                    send_alert(msg, "low")
+        except: pass
+        
         log.info("Daily security scan complete")
         
     except Exception as e:
