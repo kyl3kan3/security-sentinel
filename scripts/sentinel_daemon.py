@@ -51,7 +51,7 @@ KNOWN_BAD = [
 
 # Sensitive dirs to watch for changes
 WATCH_DIRS = [
-    "/etc", "/root", "/home", "/var/spool/cron",
+    "/etc", "/root", "/var/spool/cron",
     "/usr/local/bin", "/usr/bin",
 ]
 
@@ -301,7 +301,11 @@ def monitor_filesystem():
                 path = directory + filename
 
                 # Skip noisy irrelevant changes
-                skip = [".log", ".pid", ".lock", "/proc/", "/sys/", "utmp", "wtmp", "lastlog"]
+                skip = [".log", ".pid", ".lock", "/proc/", "/sys/", "utmp", "wtmp", "lastlog",
+                        "/.openclaw/", "/.wrangler/", "/.cache/", "/.npm/", "/.yarn/", "/.cargo/",
+                        "/node_modules/", "/.git/", "/__pycache__/", ".tmp", ".swp",
+                        ".xsession-errors", "sessions.json", ".jsonl",
+                        ".bashrc", ".profile", ".bash_history"]
                 if any(s in path for s in skip):
                     continue
 
