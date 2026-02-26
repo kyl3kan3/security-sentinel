@@ -19,6 +19,51 @@ from pathlib import Path
 import requests
 import psutil
 
+# ── State persistence ────────────────────────────────────────────────────────
+STATE_FILE = "/var/lib/security-sentinel/state.json"
+
+def load_state():
+    """Load persisted state from disk."""
+    try:
+        with open(STATE_FILE, 'r') as f:
+            data = json.load(f)
+            # Convert lists back to sets
+            state = {
+                "known_pids": set(data.get("known_pids", [])),
+                "known_ports": set(data.get("known_ports", [])),
+                "known_ips": set(data.get("known_ips", [])),
+                "alerted_pids": set(data.get("alerted_pids", [])),
+                "alerted_ports": set(data.get("alerted_ports", [])),
+                "alerted_ips": set(data.get("alerted_ips", [])),
+                "blocked_ips": set(data.get("blocked_ips", [])),
+                "ssh_failures": {},
+            }
+            return state
+    except:
+        return None
+
+def save_state(state):
+    """Persist state to disk."""
+    try:
+        os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
+        data = {
+            "known_pids": list(state["known_pids"]),
+            "known_ports": list(state["known_ports"]),
+            "known_ips": list(state["known_ips"]),
+            "alerted_pids": list(state["alerted_pids"]),
+            "alerted_ports": list(state["alerted_ports"]),
+            "alerted_ips": list(state["alerted_ips"]),
+            "blocked_ips": list(state["blocked_ips"]),
+            "ssh_failures": {},
+        }
+        with open(STATE_FILE, 'w') as f:
+            json.dump(data, f)
+    except Exception as e:
+        log.error("Failed to save state: %s", e)
+
+# Try to load persisted state
+persisted = load_state()
+
 # ── Config ────────────────────────────────────────────────────────────────────
 TELEGRAM_TOKEN  = os.environ.get("TELEGRAM_TOKEN", "")
 TELEGRAM_CHAT   = os.environ.get("TELEGRAM_CHAT_ID", "")
@@ -67,16 +112,22 @@ logging.basicConfig(
 log = logging.getLogger("sentinel")
 
 # ── State ─────────────────────────────────────────────────────────────────────
-state = {
-    "known_pids":       set(),
-    "known_ports":      set(),
-    "known_ips":        set(),
-    "ssh_failures":     {},   # ip -> list of timestamps
-    "alerted_pids":     set(),
-    "alerted_ports":    set(),
-    "alerted_ips":      set(),
-    "blocked_ips":      set(),
-}
+# Load persisted state or create new
+if persisted:
+    state = persisted
+    log.info("Loaded persisted state with %d known PIDs, %d known ports", 
+              len(state.get("known_pids", [])), len(state.get("known_ports", [])))
+else:
+    state = {
+        "known_pids":       set(),
+        "known_ports":      set(),
+        "known_ips":        set(),
+        "ssh_failures":     {},   # ip -> list of timestamps
+        "alerted_pids":     set(),
+        "alerted_ports":    set(),
+        "alerted_ips":      set(),
+        "blocked_ips":      set(),
+    }
 
 # ── Telegram ──────────────────────────────────────────────────────────────────
 def send_alert(message: str, level: str = "medium"):
@@ -463,6 +514,7 @@ def main():
         time.sleep(3600)
         log.info("Heartbeat — all monitors running")
         send_alert("💓 Sentinel heartbeat — all systems monitored", "low")
+        save_state(state)  # Persist known PIDs/ports
 
 
 if __name__ == "__main__":
