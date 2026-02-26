@@ -463,6 +463,61 @@ def monitor_resources():
             log.error("Resource monitor error: %s", e)
 
 
+# ── Secrets Scanner ───────────────────────────────────────────────────────────
+SENSITIVE_FILES = [
+    "/root/.ssh/id_rsa",
+    "/root/.ssh/id_ed25519",
+    "/root/.aws/credentials",
+    "/root/.aws/config",
+    "/root/.bashrc",
+    "/root/.bash_profile",
+    "/root/.profile",
+    "/home/*/.ssh/id_rsa",
+    "/home/*/.aws/credentials",
+    "/home/*/.bashrc",
+    "/etc/shadow",
+    "/etc/passwd",
+]
+
+ALERTED_SECRETS = set()  # Track alerted secrets checks
+
+def monitor_secrets():
+    """Check for exposed sensitive files (wrong permissions, new files, etc)."""
+    while True:
+        time.sleep(3600)  # Run hourly
+        try:
+            import glob
+            
+            for pattern in SENSITIVE_FILES:
+                expanded = glob.glob(pattern)
+                for path in expanded:
+                    try:
+                        st = os.stat(path)
+                        mode = st.st_mode
+                        
+                        # Check for too-open permissions on private keys
+                        if "id_rsa" in path or "id_ed25519" in path:
+                            if mode & 0o077:  # Anyone can read
+                                if path not in ALERTED_SECRETS:
+                                    msg = f"🔴 SSH private key has loose permissions!\nPath: `{path}`\nMode: {oct(mode)}"
+                                    send_alert(msg, "high")
+                                    ALERTED_SECRETS.add(path)
+                                    
+                        # Check if secrets file is world-readable
+                        if mode & 0o004:  # Others can read
+                            if "credentials" in path or "bashrc" in path or ".aws" in path:
+                                if path not in ALERTED_SECRETS:
+                                    msg = f"🟠 Sensitive file is world-readable!\nPath: `{path}`\nMode: {oct(mode)}"
+                                    send_alert(msg, "medium")
+                                    ALERTED_SECRETS.add(path)
+                                    
+                    except (OSError, PermissionError):
+                        pass
+                        
+        except Exception as e:
+            log.error("Secrets monitor error: %s", e)
+
+
 def monitor_network_devices():
     """Detect new devices appearing on the local network via ARP."""
     def get_arp_table():
@@ -508,6 +563,7 @@ def main():
         threading.Thread(target=monitor_docker,           daemon=True, name="docker"),
         threading.Thread(target=monitor_resources,        daemon=True, name="resources"),
         threading.Thread(target=monitor_network_devices,  daemon=True, name="network"),
+        threading.Thread(target=monitor_secrets,          daemon=True, name="secrets"),
     ]
 
     for t in threads:
