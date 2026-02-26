@@ -497,7 +497,7 @@ def run_daily_scan():
                 try:
                     st = os.stat(path)
                     if st.st_mode & 0o077:
-                        msg = f"🔴 SSH private key has loose permissions\nPath: `{path}`\nMode: {oct(st.st_mode)}"
+                        msg = f"[HIGH] SSH private key has loose permissions\nPath: {path}\nMode: {oct(st.st_mode)}"
                         send_alert(msg, "high")
                 except: pass
         
@@ -506,7 +506,7 @@ def run_daily_scan():
             try:
                 st = os.stat(ak)
                 if st.st_size > 0 and st.st_mode & 0o077:
-                    msg = f"🟠 authorized_keys is too open\nPath: `{ak}`\nMode: {oct(st.st_mode)}"
+                    msg = f"[MEDIUM] authorized_keys is too open\nPath: {ak}\nMode: {oct(st.st_mode)}"
                     send_alert(msg, "medium")
             except: pass
         
@@ -515,7 +515,7 @@ def run_daily_scan():
             with open("/etc/passwd", "r") as f:
                 users = [line.split(":")[0] for line in f if line.strip() and int(line.split(":")[2]) >= 1000]
             if len(users) > 10:  # More than 10 non-system users
-                msg = f"🟡 Multiple non-system users detected: {', '.join(users[:5])}..."
+                msg = f"[LOW] Multiple non-system users: {', '.join(users[:5])}..."
                 send_alert(msg, "low")
         except: pass
         
@@ -525,7 +525,7 @@ def run_daily_scan():
             for f in glob.glob("/etc/cron.d/*") + glob.glob("/etc/cron.daily/*"):
                 cron_count += 1
             if cron_count > 20:
-                msg = f"🟡 Many cron job files detected: {cron_count}"
+                msg = f"[LOW] Many cron job files: {cron_count}"
                 send_alert(msg, "low")
         except: pass
         
@@ -534,7 +534,7 @@ def run_daily_scan():
             result = subprocess.run(["systemctl", "list-units", "--type=service", "--all", "--no-pager"], 
                                  capture_output=True, text=True, timeout=30)
             svc_count = len([l for l in result.stdout.splitlines() if ".service" in l])
-            msg = f"💓 Daily scan complete\nServices: {svc_count}"
+            msg = f"Daily scan complete - Services: {svc_count}"
             send_alert(msg, "low")
         except: pass
         
