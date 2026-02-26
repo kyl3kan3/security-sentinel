@@ -50,10 +50,9 @@ KNOWN_BAD = [
 ]
 
 # Sensitive dirs to watch for changes
-WATCH_DIRS = [
-    "/etc", "/root", "/var/spool/cron",
-    "/usr/local/bin", "/usr/bin",
-]
+# DISABLED for personal Pi - generates too many benign changes (CUPS, network, etc)
+# The other monitors (processes, ports, network, docker) will catch real threats
+WATCH_DIRS = []
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
