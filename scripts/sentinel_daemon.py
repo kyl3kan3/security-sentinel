@@ -481,8 +481,73 @@ SENSITIVE_FILES = [
 
 ALERTED_SECRETS = set()  # Track alerted secrets checks
 
+# Track state for daily scan
+DAILY_SCAN_DONE = False
+
+def run_daily_scan():
+    """Daily security scan - checks for common issues."""
+    log.info("Running daily security scan...")
+    
+    try:
+        # 1. Check for exposed secrets
+        import glob
+        for pattern in ["/root/.ssh/id_rsa", "/root/.ssh/id_ed25519",
+                       "/home/*/.ssh/id_rsa", "/home/*/.ssh/id_ed25519"]:
+            for path in glob.glob(pattern):
+                try:
+                    st = os.stat(path)
+                    if st.st_mode & 0o077:
+                        msg = f"🔴 SSH private key has loose permissions\nPath: `{path}`\nMode: {oct(st.st_mode)}"
+                        send_alert(msg, "high")
+                except: pass
+        
+        # 2. Check authorized_keys for new entries
+        for ak in glob.glob("/root/.ssh/authorized_keys") + glob.glob("/home/*/.ssh/authorized_keys"):
+            try:
+                st = os.stat(ak)
+                if st.st_size > 0 and st.st_mode & 0o077:
+                    msg = f"🟠 authorized_keys is too open\nPath: `{ak}`\nMode: {oct(st.st_mode)}"
+                    send_alert(msg, "medium")
+            except: pass
+        
+        # 3. Check for new users (UID >= 1000)
+        try:
+            with open("/etc/passwd", "r") as f:
+                users = [line.split(":")[0] for line in f if line.strip() and int(line.split(":")[2]) >= 1000]
+            if len(users) > 10:  # More than 10 non-system users
+                msg = f"🟡 Multiple non-system users detected: {', '.join(users[:5])}..."
+                send_alert(msg, "low")
+        except: pass
+        
+        # 4. Check for new cron jobs
+        try:
+            cron_count = 0
+            for f in glob.glob("/etc/cron.d/*") + glob.glob("/etc/cron.daily/*"):
+                cron_count += 1
+            if cron_count > 20:
+                msg = f"🟡 Many cron job files detected: {cron_count}"
+                send_alert(msg, "low")
+        except: pass
+        
+        # 5. Check for new systemd services
+        try:
+            result = subprocess.run(["systemctl", "list-units", "--type=service", "--all", "--no-pager"], 
+                                 capture_output=True, text=True, timeout=30)
+            svc_count = len([l for l in result.stdout.splitlines() if ".service" in l])
+            msg = f"💓 Daily scan complete\nServices: {svc_count}"
+            send_alert(msg, "low")
+        except: pass
+        
+        log.info("Daily security scan complete")
+        
+    except Exception as e:
+        log.error("Daily scan error: %s", e)
+
+
 def monitor_secrets():
     """Check for exposed sensitive files (wrong permissions, new files, etc)."""
+    global DAILY_SCAN_DONE
+    
     while True:
         time.sleep(3600)  # Run hourly
         try:
@@ -555,6 +620,9 @@ def monitor_network_devices():
 def main():
     log.info("Security Sentinel starting on %s", HOSTNAME)
     send_alert(f"🛡️ Security Sentinel started\nHost: `{HOSTNAME}`\nAlert level: `{ALERT_LEVEL}`", "low")
+    
+    # Run initial daily scan on startup
+    run_daily_scan()
 
     threads = [
         threading.Thread(target=monitor_ports,            daemon=True, name="ports"),
