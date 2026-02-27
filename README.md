@@ -97,3 +97,9 @@ security-sentinel/
 ## License
 
 MIT
+
+## Changelog
+
+### v1.0.2
+- Added `/home/kyl3kan3/.openclaw` to `WATCH_DIRS` — agent config, `openclaw.json`, and cron definitions now trigger alerts on change
+- Removed `.openclaw` from `WATCH_EXCLUDE` (was previously silencing all OpenClaw config changes)

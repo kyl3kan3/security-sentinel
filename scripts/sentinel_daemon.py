@@ -105,11 +105,11 @@ KNOWN_GOOD_ROOT = ["docker", "containerd", "systemd", "cron", "rsyslog"]
 # Sensitive dirs to watch for changes
 # Watch only critical directories for security
 # Exclude noisy directories (CUPS, NetworkManager, etc)
-WATCH_DIRS = ["/root", "/var/spool/cron", "/usr/local/bin", "/usr/local/sbin"]
+WATCH_DIRS = ["/root", "/var/spool/cron", "/usr/local/bin", "/usr/local/sbin", "/home/kyl3kan3/.openclaw"]
 
 # Exclude patterns (benign changes to skip)
 WATCH_EXCLUDE = ["cups", "NetworkManager", "ssl", "certificates", ".cache", 
-                 ".openclaw", "sessions.json", ".jsonl", ".tmp", ".swp"]
+                 "sessions.json", ".jsonl", ".tmp", ".swp"]
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
