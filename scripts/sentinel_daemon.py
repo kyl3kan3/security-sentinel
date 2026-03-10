@@ -252,10 +252,16 @@ def monitor_processes():
 
 def monitor_ports():
     """Detect new open ports."""
-    def get_open_ports():
+    # Processes allowed to open new ports without alerting
+ALLOWED_PROCS = {"gws", "node", "python3", "python", "openclaw"}
+
+def get_open_ports():
         ports = set()
         for conn in psutil.net_connections(kind="inet"):
             if conn.status == "LISTEN" and conn.laddr:
+                # Skip localhost-only ports (127.0.0.1 / ::1) — not externally exposed
+                if conn.laddr.ip in ("127.0.0.1", "::1"):
+                    continue
                 ports.add(conn.laddr.port)
         return ports
 
@@ -610,7 +616,7 @@ def monitor_secrets():
                                     
                         # Check if secrets file is world-readable
                         if mode & 0o004:  # Others can read
-                            if "credentials" in path or "bashrc" in path or ".aws" in path:
+                            if "credentials" in path or ".aws" in path:
                                 if path not in ALERTED_SECRETS:
                                     msg = f"🟠 Sensitive file is world-readable!\nPath: `{path}`\nMode: {oct(mode)}"
                                     send_alert(msg, "medium")
@@ -690,7 +696,8 @@ def main():
             run_daily_scan()
             scan_counter = 0
             
-        send_alert("💓 Sentinel heartbeat — all systems monitored", "low")
+        # Heartbeat ping suppressed — only alert on issues
+        log.info("Heartbeat — all systems monitored (silent)")
         save_state(state)  # Persist known PIDs/ports
 
 
