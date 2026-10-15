@@ -252,10 +252,7 @@ def monitor_processes():
 
 def monitor_ports():
     """Detect new open ports."""
-    # Processes allowed to open new ports without alerting
-ALLOWED_PROCS = {"gws", "node", "python3", "python", "openclaw"}
-
-def get_open_ports():
+    def get_open_ports():
         ports = set()
         for conn in psutil.net_connections(kind="inet"):
             if conn.status == "LISTEN" and conn.laddr:
